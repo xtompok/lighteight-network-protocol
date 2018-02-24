@@ -29,7 +29,7 @@ Server and device now both knows AES key and static part of the nonce.
 2) encrypts payload and updates variables for per-packet part of the nonce
 3) adds header
 4) signs it (24 b reserved for routing are treated as zeroes)
-5) adds per-packet part of the nonce
++5) adds per-packet part of the nonce
 6) sends it
 
 ### Receiving a message
@@ -64,6 +64,30 @@ The packet has following structure:
 * *32 b* - nonce (per packet part)
   - *16 b* - time in seconds
   - *16 b* - packet counter
+  
+### Streams
+The protocol allows to gather multiple packets to one to transfer larger amount of information. The stream starts with packet with `stream start` set and contains all packets until the one with `stream end` set. There must not be sent packet with `stream start` set during the stream transmission and this situation is treated as error and the stream should not be processed. The unit stream consist of a packet with `stream start` and `stream end` bits both set and every device and server must be able to transmit and receive it. The support of the multi-packet stream is optional.
+
+## Acknowledge
+TODO - WIP
+
+### Message types
+* `beacon (0x01)` - keep alive message "I am here and still alive". Payload can contain information about device.
+* `IV solicitation (0x02)` - message for solicitation of IV. The only type of packet with unencrypted payload. Payload is 96bit static part of the IV padded with zeroes.
+* `IV solicitation response (0x03)` - message for solicitation of IV. Payload is 96bit static par of the IV padded with zeroes, encrypted.
+* `data (0x04)` - the most common type of packed. Contains data as payload (read further for description).
+
+### Protocol version
+* `0x00` for the first version of the protocol. Numbering plan is not yet specified.
+
+### Payload
+Payload is encrypted using AES-CTR (TODO) except the `IV solicitation` packet. The structure of the packet is not yet stable but it is expected to have:
+* `mark` - to ensure that the message has been decrypted succesfully
+* `length` - determines the length of the payload. If there is a stream, it determines length of entire stream. Counts in packets (TODO present only in multi-packet streams?)
+* `command` - what is transferred
+* `data` - interpretation depends on the `command`
+
+### MIC
   
 ## Generating the IV
 The initialization vector (IV) consists of the static part and the per-packet part. Static part is generated on the boot of the device or after dynamic part is getting close to limit. Dynamic part changes predictably for every message. The static part is 96 b long and the dynamic part is 32 b long.
